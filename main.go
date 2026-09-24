@@ -3,11 +3,24 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+
+	"github.com/joho/godotenv"
+
 	"wg-manager/internal/api"
 	"wg-manager/internal/vpn"
 )
 
 func main() {
+	apiKey := ""
+	if err := godotenv.Load(); err != nil {
+		fmt.Printf("Failed to load .env; protected endpoints will remain unavailable: %v\n", err)
+	} else {
+		apiKey = os.Getenv("API_KEY")
+		if apiKey == "" {
+			fmt.Println("API_KEY is empty; protected endpoints will remain unavailable")
+		}
+	}
 
 	// vpn service object initialization
 	vpnApp := vpn.VPNService{}
@@ -24,7 +37,7 @@ func main() {
 	// handlers
 
 	mux.HandleFunc("/hello", hello)
-	mux.HandleFunc("/profile", api.MakeProfileHandler(&vpnApp))
+	mux.Handle("/profile", api.RequireAPIKey(apiKey, api.MakeProfileHandler(&vpnApp)))
 
 	fmt.Println("Starting a server on port 8080")
 	server.ListenAndServe() //here I should put a port somewhere or in the struct
